@@ -59,10 +59,8 @@ jobs:
           echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
           echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
 
-
-
-
-
-
       - name: Validate Nginx
-        run: bash scripts/validate_and_cleanup.sh $INSTANCE_ID $AWS_REGION
+        run: |
+          echo "Waiting 5 minutes for server to fully initialize..."
+          sleep 300
+          bash scripts/validate_and_cleanup.sh $INSTANCE_ID $AWS_REGION
