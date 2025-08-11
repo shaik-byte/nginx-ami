@@ -19,9 +19,6 @@ jobs:
         with:
           version: latest
 
-      - name: Set up Ansible
-        run: sudo apt-get update && sudo apt-get install -y ansible
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -29,48 +26,32 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Build AMI and extract ID
-        run: |
-          set -e
-          echo "Building AMI..."
-          AMI_ID=$(packer build -machine-readable packer/template.pkr.hcl | \
-            awk -F, '$3=="artifact,0,id" {print $6}' | cut -d':' -f2)
-          if [ -z "$AMI_ID" ]; then
-            echo "❌ Failed to extract AMI ID"
-            exit 1
-          fi
-          echo "✅ Built AMI: $AMI_ID"
-          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
-
       - name: Build AMI
         run: |
-          set -e
-          echo "Building AMI..."
-          PACKER_OUTPUT=$(packer build -machine-readable -color=false packer/template.pkr.hcl || exit 1)
+          echo "Building AMI from base AMI: ${{ vars.SOURCE_AMI_ID }}"
+          PACKER_OUTPUT=$(packer build \
+            -var "source_ami=${{ vars.SOURCE_AMI_ID }}" \
+            -var "region=$AWS_REGION" \
+            -machine-readable packer/template.pkr.hcl)
           echo "$PACKER_OUTPUT"
           AMI_ID=$(echo "$PACKER_OUTPUT" | grep -oP 'ami-\w{8,}' | tail -1)
           if [ -z "$AMI_ID" ]; then
-            echo "❌ Failed to extract AMI ID from output"
+            echo "❌ Failed to extract new AMI ID"
             exit 1
           fi
-          echo "✅ Built AMI: $AMI_ID"
+          echo "✅ Built new AMI: $AMI_ID"
           echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
-
 
       - name: Launch EC2 instance
         run: |
-          if [ -z "$AMI_ID" ]; then
-            echo "❌ AMI_ID is empty. Exiting."
-            exit 1
-          fi
           INSTANCE_ID=$(aws ec2 run-instances \
-            --image-id "$AMI_ID" \
+            --image-id $AMI_ID \
             --instance-type t2.micro \
             --region $AWS_REGION \
             --query "Instances[0].InstanceId" \
             --output text)
           echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
-          echo "✅ Launched instance: $INSTANCE_ID"
+          echo "Launched instance: $INSTANCE_ID"
 
-      - name: Validate Nginx and Cleanup
+      - name: Validate Nginx
         run: bash scripts/validate_and_cleanup.sh $INSTANCE_ID $AWS_REGION
