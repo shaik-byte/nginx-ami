@@ -8,7 +8,7 @@ source "amazon-ebs" "nginx" {
   instance_type = "t2.micro"
   region        = var.region
   source_ami    = var.source_ami
-  ssh_username  = "ec2-user"
+  ssh_username  = "ubuntu"
 }
 
 variable "region" {
