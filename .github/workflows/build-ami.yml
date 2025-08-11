@@ -30,12 +30,11 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Build AMI
-        run: packer build packer/template.pkr.hcl | tee build.log
-
-      - name: Extract AMI ID
         run: |
-          AMI_ID=$(grep -oP 'ami-[a-zA-Z0-9]+' build.log | tail -1)
+          AMI_ID=$(packer build -machine-readable packer/template.pkr.hcl | \
+            awk -F, '$3=="artifact,0,id" {print $6}' | cut -d':' -f2)
           echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+          echo "Built AMI: $AMI_ID"
 
       - name: Launch EC2 instance
         run: |
