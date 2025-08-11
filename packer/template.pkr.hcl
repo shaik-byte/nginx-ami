@@ -1,15 +1,14 @@
 variable "source_ami" {
   type    = string
-  default = "ami-0e53db6fd757e38c7" # fallback
+  default = "" # Will come from GitHub variable
 }
 
 source "amazon-ebs" "nginx" {
-  region      = var.region
-  source_ami  = var.source_ami
-  instance_type = "t2.micro"
-  ssh_username  = "ec2-user"
-
   ami_name      = "nginx-ami-{{timestamp}}"
+  instance_type = "t2.micro"
+  region        = var.region
+  source_ami    = var.source_ami
+  ssh_username  = "ec2-user"
 }
 
 variable "region" {
@@ -20,7 +19,12 @@ variable "region" {
 build {
   sources = ["source.amazon-ebs.nginx"]
 
-  provisioner "ansible" {
-    playbook_file = "../ansible/install_nginx.yml"
+  provisioner "shell" {
+    inline = [
+      "sudo yum update -y",
+      "sudo amazon-linux-extras enable nginx1",
+      "sudo yum install -y nginx",
+      "sudo systemctl enable nginx"
+    ]
   }
 }
