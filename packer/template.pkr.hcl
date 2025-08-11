@@ -1,28 +1,26 @@
-variable "aws_region" {
+variable "source_ami" {
+  type    = string
+  default = "ami-0e53db6fd757e38c7" # fallback
+}
+
+source "amazon-ebs" "nginx" {
+  region      = var.region
+  source_ami  = var.source_ami
+  instance_type = "t2.micro"
+  ssh_username  = "ec2-user"
+
+  ami_name      = "nginx-ami-{{timestamp}}"
+}
+
+variable "region" {
+  type    = string
   default = "ap-south-1"
 }
 
-source "amazon-ebs" "nginx-ami" {
-  region           = var.aws_region
-  source_ami_filter {
-    filters = {
-      virtualization-type = "hvm"
-      name                = "ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"
-      root-device-type    = "ebs"
-    }
-    owners      = ["099720109477"] # Canonical
-    most_recent = true
-  }
-  instance_type   = "t2.micro"
-  ssh_username    = "ubuntu"
-  ami_name        = "nginx-ami-{{timestamp}}"
-}
-
 build {
-  name    = "nginx-ami"
-  sources = ["source.amazon-ebs.nginx-ami"]
+  sources = ["source.amazon-ebs.nginx"]
 
   provisioner "ansible" {
-    playbook_file = "./packer/ansible/playbook.yml"
+    playbook_file = "../ansible/install_nginx.yml"
   }
 }
