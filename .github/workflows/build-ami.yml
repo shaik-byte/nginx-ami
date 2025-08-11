@@ -35,7 +35,10 @@ jobs:
           packer build \
             -var "source_ami=${{ vars.SOURCE_AMI_ID }}" \
             -var "region=$AWS_REGION" \
-            packer/template.pkr.hcl
+            packer/template.pkr.hcl | awk -F, '$3 == "artifact,0,id" {print $6}' | cut -d ':' -f2)
+          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+          echo "Built AMI: $AMI_ID"
+
 
       - name: Launch EC2 instance
         run: |
