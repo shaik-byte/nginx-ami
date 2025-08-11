@@ -29,28 +29,29 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Build AMI
+      - name: Build AMI and Launch EC2 instance
         run: |
           echo "Building AMI from base AMI: ${{ vars.SOURCE_AMI_ID }}"
           AMI_ID=$(packer build -machine-readable \
             -var "source_ami=${{ vars.SOURCE_AMI_ID }}" \
             -var "region=$AWS_REGION" \
             packer/template.pkr.hcl | awk -F, '$3 == "artifact,0,id" {print $6}' | cut -d ':' -f2)
-          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
           echo "Built AMI: $AMI_ID"
-
-
-
-      - name: Launch EC2 instance
-        run: |
+      
           INSTANCE_ID=$(aws ec2 run-instances \
-            --image-id $AMI_ID \
+            --image-id "$AMI_ID" \
             --instance-type t2.micro \
-            --region $AWS_REGION \
+            --region "$AWS_REGION" \
             --query "Instances[0].InstanceId" \
             --output text)
-          echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
           echo "Launched instance: $INSTANCE_ID"
+      
+          # Save for later steps if needed
+          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+          echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
+
+
+
 
       - name: Validate Nginx
         run: bash scripts/validate_and_cleanup.sh $INSTANCE_ID $AWS_REGION
