@@ -32,10 +32,20 @@ jobs:
       - name: Build AMI and Launch EC2 instance
         run: |
           echo "Building AMI from base AMI: ${{ vars.SOURCE_AMI_ID }}"
-          AMI_ID=$(packer build -machine-readable \
+          RAW_OUTPUT=$(packer build -machine-readable \
             -var "source_ami=${{ vars.SOURCE_AMI_ID }}" \
             -var "region=$AWS_REGION" \
-            packer/template.pkr.hcl | awk -F, '$3 == "artifact,0,id" {print $6}' | cut -d ':' -f2)
+            packer/template.pkr.hcl)
+      
+          echo "$RAW_OUTPUT"  # debug line, can remove later
+      
+          AMI_ID=$(echo "$RAW_OUTPUT" | awk -F, '$3 == "artifact,0,id" {print $6}' | cut -d ':' -f2)
+      
+          if [ -z "$AMI_ID" ]; then
+            echo "❌ ERROR: No AMI ID found. Check Packer output above."
+            exit 1
+          fi
+      
           echo "Built AMI: $AMI_ID"
       
           INSTANCE_ID=$(aws ec2 run-instances \
@@ -46,9 +56,9 @@ jobs:
             --output text)
           echo "Launched instance: $INSTANCE_ID"
       
-          # Save for later steps if needed
           echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
           echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
+
 
 
 
