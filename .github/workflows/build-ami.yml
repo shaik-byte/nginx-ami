@@ -37,9 +37,9 @@ jobs:
             -var "region=$AWS_REGION" \
             packer/template.pkr.hcl)
       
-          echo "$RAW_OUTPUT"  # debug line, can remove later
+          echo "$RAW_OUTPUT"  # debug log
       
-          AMI_ID=$(echo "$RAW_OUTPUT" | awk -F, '$3 == "artifact,0,id" {print $6}' | cut -d ':' -f2)
+          AMI_ID=$(echo "$RAW_OUTPUT" | grep 'artifact,0,id' | cut -d',' -f6 | cut -d':' -f2)
       
           if [ -z "$AMI_ID" ]; then
             echo "❌ ERROR: No AMI ID found. Check Packer output above."
@@ -58,6 +58,7 @@ jobs:
       
           echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
           echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
+
 
 
 
