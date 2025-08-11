@@ -1,0 +1,50 @@
+name: Build AMI with Packer
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ap-south-1
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Packer
+        uses: hashicorp/setup-packer@v1
+
+      - name: Set up Ansible
+        run: sudo apt-get update && sudo apt-get install -y ansible
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build AMI
+        run: packer build packer/template.pkr.hcl | tee build.log
+
+      - name: Extract AMI ID
+        run: |
+          AMI_ID=$(grep -oP 'ami-[a-zA-Z0-9]+' build.log | tail -1)
+          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+
+      - name: Launch EC2 instance
+        run: |
+          INSTANCE_ID=$(aws ec2 run-instances \
+            --image-id $AMI_ID \
+            --instance-type t2.micro \
+            --region $AWS_REGION \
+            --query "Instances[0].InstanceId" \
+            --output text)
+          echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
+          echo "Launched instance: $INSTANCE_ID"
+
+      - name: Validate Nginx and Cleanup
+        run: bash scripts/validate_and_cleanup.sh $INSTANCE_ID $AWS_REGION
