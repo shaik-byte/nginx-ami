@@ -42,9 +42,20 @@ jobs:
           echo "✅ Built AMI: $AMI_ID"
           echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
 
-      - name: Debug AMI ID
+      - name: Build AMI
         run: |
-          echo "Loaded AMI_ID: $AMI_ID"
+          set -e
+          echo "Building AMI..."
+          PACKER_OUTPUT=$(packer build -machine-readable -color=false packer/template.pkr.hcl || exit 1)
+          echo "$PACKER_OUTPUT"
+          AMI_ID=$(echo "$PACKER_OUTPUT" | grep -oP 'ami-\w{8,}' | tail -1)
+          if [ -z "$AMI_ID" ]; then
+            echo "❌ Failed to extract AMI ID from output"
+            exit 1
+          fi
+          echo "✅ Built AMI: $AMI_ID"
+          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+
 
       - name: Launch EC2 instance
         run: |
