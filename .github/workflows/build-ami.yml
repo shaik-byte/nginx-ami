@@ -19,6 +19,9 @@ jobs:
         with:
           version: latest
 
+      - name: Install Packer AWS plugin
+        run: packer plugins install github.com/hashicorp/amazon
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
