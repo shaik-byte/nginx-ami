@@ -29,18 +29,10 @@ jobs:
       - name: Build AMI
         run: |
           echo "Building AMI from base AMI: ${{ vars.SOURCE_AMI_ID }}"
-          PACKER_OUTPUT=$(packer build \
+          packer build \
             -var "source_ami=${{ vars.SOURCE_AMI_ID }}" \
             -var "region=$AWS_REGION" \
-            -machine-readable packer/template.pkr.hcl)
-          echo "$PACKER_OUTPUT"
-          AMI_ID=$(echo "$PACKER_OUTPUT" | grep -oP 'ami-\w{8,}' | tail -1)
-          if [ -z "$AMI_ID" ]; then
-            echo "❌ Failed to extract new AMI ID"
-            exit 1
-          fi
-          echo "✅ Built new AMI: $AMI_ID"
-          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+            packer/template.pkr.hcl
 
       - name: Launch EC2 instance
         run: |
