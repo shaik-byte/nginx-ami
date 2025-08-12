@@ -30,11 +30,12 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
    
+
+
       - name: Build AMI, Launch EC2, and Run Trivy scan via SSM
-        env:
-          AWS_REGION: ${{ env.AWS_REGION }}
-          SOURCE_AMI_ID: ${{ vars.SOURCE_AMI_ID }}
         run: |
+          set -ex
+
           echo "Building AMI from base AMI: $SOURCE_AMI_ID"
           RAW_OUTPUT=$(packer build -machine-readable \
             -var "source_ami=$SOURCE_AMI_ID" \
@@ -56,7 +57,7 @@ jobs:
             --image-id "$AMI_ID" \
             --instance-type t2.micro \
             --region "$AWS_REGION" \
-            --iam-instance-profile Name=YourIAMRoleName \
+            --iam-instance-profile Name=YourIAMRoleName \   # Update this IAM role name!
             --query "Instances[0].InstanceId" \
             --output text)
 
@@ -111,10 +112,23 @@ jobs:
 
           if [[ "$STATUS" != "Success" ]]; then
             echo "SSM command failed with status: $STATUS"
+            
+            echo "Command standard output:"
             aws ssm get-command-invocation \
               --command-id "$COMMAND_ID" \
               --instance-id "$INSTANCE_ID" \
-              --region "$AWS_REGION"
+              --region "$AWS_REGION" \
+              --query "StandardOutputContent" \
+              --output text || echo "Failed to get standard output"
+
+            echo "Command standard error:"
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --region "$AWS_REGION" \
+              --query "StandardErrorContent" \
+              --output text || echo "Failed to get standard error"
+
             exit 1
           fi
 
@@ -129,7 +143,6 @@ jobs:
 
           echo "Trivy scan report saved to trivy-report.txt"
           cat trivy-report.txt
-
 
       - name: Validate Nginx
         run: |
