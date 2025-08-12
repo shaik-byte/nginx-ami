@@ -3,7 +3,7 @@ name: Build AMI with Packer
 on:
   push:
     branches:
-      - main
+      - '*'
 
 jobs:
   build:
